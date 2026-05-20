@@ -13,28 +13,27 @@
       <p>Choose 6 numbers from 1-99, buy tickets, then draw and win.</p>
     </header>
 
-    <section class="panel settings-panel">
-      <h2>Settings</h2>
-      <div class="setting-row">
-        <label for="ticketPrice">Ticket price ($)</label>
-        <input id="ticketPrice" type="number" min="1" value="2" />
-      </div>
-      <div class="setting-row">
-        <label for="maxTickets">Max tickets at once</label>
-        <input id="maxTickets" type="number" min="1" value="10" />
-      </div>
-      <div class="setting-row">
-        <label for="themeSelect">Theme</label>
-        <select id="themeSelect">
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-          <option value="retro">Retro</option>
-        </select>
-      </div>
-    </section>
+    <div class="tab-bar">
+      <button type="button" class="tab-button active" data-tab="buy">Buy Tickets</button>
+      <button type="button" class="tab-button" data-tab="settings">Settings</button>
+    </div>
 
-    <section class="panel purchase-panel">
+    <section class="panel purchase-panel" id="buyTab">
       <h2>Buy Tickets</h2>
+      <div class="buy-summary-row">
+        <div>
+          <strong>Next ticket #</strong>
+          <div id="nextTicketNumber">1</div>
+        </div>
+        <div>
+          <label for="ticketName">Ticket name</label>
+          <input id="ticketName" type="text" placeholder="Optional name" />
+        </div>
+        <div>
+          <strong>Total ticket price</strong>
+          <div id="currentTotalPrice">$2.00</div>
+        </div>
+      </div>
       <div class="field-row">
         <label for="buyQuantity">Quantity</label>
         <input id="buyQuantity" type="number" min="1" value="1" />
@@ -53,6 +52,29 @@
         <input type="number" min="1" max="99" placeholder="#6" />
       </div>
       <button id="addCustomTicketBtn" class="secondary" style="display:none;">Add Custom Ticket</button>
+    </section>
+
+    <section class="panel settings-panel hidden" id="settingsTab">
+      <h2>Settings</h2>
+      <div class="setting-row">
+        <label for="ticketPrice">Ticket price ($)</label>
+        <input id="ticketPrice" type="number" min="1" value="2" />
+      </div>
+      <div class="setting-row">
+        <label for="maxTickets">Max tickets at once</label>
+        <input id="maxTickets" type="number" min="1" value="10" />
+      </div>
+      <div class="setting-row">
+        <label for="themeSelect">Theme</label>
+        <select id="themeSelect">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="retro">Retro</option>
+          <option value="ocean">Ocean</option>
+          <option value="solar">Solar</option>
+          <option value="forest">Forest</option>
+        </select>
+      </div>
     </section>
 
     <section class="panel tickets-panel">

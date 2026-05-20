@@ -2,6 +2,9 @@ const ticketPriceInput = document.getElementById('ticketPrice');
 const maxTicketsInput = document.getElementById('maxTickets');
 const themeSelect = document.getElementById('themeSelect');
 const buyQuantityInput = document.getElementById('buyQuantity');
+const ticketNameInput = document.getElementById('ticketName');
+const nextTicketNumberText = document.getElementById('nextTicketNumber');
+const currentTotalPriceText = document.getElementById('currentTotalPrice');
 const quickPickBtn = document.getElementById('quickPickBtn');
 const customPickBtn = document.getElementById('customPickBtn');
 const customInputs = document.getElementById('customInputs');
@@ -13,10 +16,14 @@ const drawBtn = document.getElementById('drawBtn');
 const drawnNumbersText = document.getElementById('drawnNumbers');
 const winnerCountText = document.getElementById('winnerCount');
 const resultDetails = document.getElementById('resultDetails');
+const tabButtons = document.querySelectorAll('.tab-button');
+const buyTab = document.getElementById('buyTab');
+const settingsTab = document.getElementById('settingsTab');
 
 let tickets = [];
 let currentTheme = 'light';
 let customMode = false;
+let nextTicketId = 1;
 
 function randomNumbers(count, min, max) {
   const numbers = new Set();
@@ -33,6 +40,13 @@ function normalizeTicket(numbers) {
   return uniqueNumbers.sort((a, b) => a - b);
 }
 
+function updateBuySummary() {
+  const quantity = Math.max(1, Number(buyQuantityInput.value) || 1);
+  const price = Number(ticketPriceInput.value) || 0;
+  nextTicketNumberText.textContent = nextTicketId;
+  currentTotalPriceText.textContent = `$${(quantity * price).toFixed(2)}`;
+}
+
 function updateUi() {
   ticketList.innerHTML = '';
   tickets.forEach((ticket, index) => {
@@ -40,7 +54,7 @@ function updateUi() {
     card.className = 'ticket-card';
     card.innerHTML = `
       <div>
-        <strong>Ticket ${index + 1}</strong>
+        <strong>Ticket #${ticket.ticketNumber}${ticket.name ? ` — ${ticket.name}` : ''}</strong>
         <div>${ticket.numbers.join(', ')}</div>
       </div>
       <button data-index="${index}" class="secondary">Remove</button>
@@ -55,19 +69,72 @@ function updateUi() {
   const price = Number(ticketPriceInput.value) || 0;
   ticketCountText.textContent = `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`;
   totalCostText.textContent = `$${(tickets.length * price).toFixed(2)}`;
+  updateBuySummary();
 }
 
-function showResult(drawNumbers, winners) {
+function formatMoney(value) {
+  return `$${value.toFixed(2)}`;
+}
+
+function getPrizeDistribution(pool) {
+  return {
+    6: pool * 0.7,
+    5: pool * 0.15,
+    4: pool * 0.1,
+    3: pool * 0.05,
+  };
+}
+
+function showResult(drawNumbers, winners, prizePool, prizeAmounts) {
   drawnNumbersText.textContent = drawNumbers.join(', ');
   winnerCountText.textContent = winners.length;
-  resultDetails.innerHTML = winners.length === 0
-    ? '<p class="help-text">No ticket matched 2 or more numbers.</p>'
-    : winners.map(win => `
+
+  const distributionHtml = Object.entries(prizeAmounts).map(([count, amount]) => `
+    <div class="result-item">
+      <strong>${count} match${count > 1 ? 'es' : ''}:</strong> ${formatMoney(amount)} total
+    </div>
+  `).join('');
+
+  if (winners.length === 0) {
+    resultDetails.innerHTML = `
       <div class="result-item">
-        <strong>Ticket ${win.index + 1}:</strong> ${win.ticket.numbers.join(', ')}
-        <div>Matches: ${win.matchCount} (${win.matches.join(', ')})</div>
+        <strong>Prize pool:</strong> ${formatMoney(prizePool)}
       </div>
-    `).join('');
+      ${distributionHtml}
+      <p class="help-text">No ticket matched 3 or more numbers.</p>
+    `;
+    return;
+  }
+
+  const winnersByMatch = winners.reduce((acc, win) => {
+    acc[win.matchCount] = acc[win.matchCount] || [];
+    acc[win.matchCount].push(win);
+    return acc;
+  }, {});
+
+  const winnersHtml = Object.entries(winnersByMatch)
+    .sort((a, b) => Number(b[0]) - Number(a[0]))
+    .map(([matchCount, group]) => {
+      const totalForCategory = prizeAmounts[matchCount] || 0;
+      const share = group.length ? totalForCategory / group.length : 0;
+
+      return group.map(win => `
+        <div class="result-item">
+          <strong>Ticket ${win.index + 1}${win.ticket.name ? ` — ${win.ticket.name}` : ''}:</strong>
+          <div>Numbers: ${win.ticket.numbers.join(', ')}</div>
+          <div>Matches: ${win.matchCount} (${win.matches.join(', ')})</div>
+          <div>Prize: ${share > 0 ? formatMoney(share) : 'No prize'}</div>
+        </div>
+      `).join('');
+    }).join('');
+
+  resultDetails.innerHTML = `
+    <div class="result-item">
+      <strong>Prize pool:</strong> ${formatMoney(prizePool)}
+    </div>
+    ${distributionHtml}
+    ${winnersHtml}
+  `;
 }
 
 function computeMatches(ticket, drawNumbers) {
@@ -79,7 +146,7 @@ function ensureAtLeastOneWinner(drawNumbers) {
   const winners = tickets.map((ticket, index) => {
     const result = computeMatches(ticket, drawNumbers);
     return { ticket, index, ...result };
-  }).filter(x => x.matchCount >= 2);
+  }).filter(x => x.matchCount >= 3);
 
   if (winners.length > 0) {
     return { drawNumbers, winners };
@@ -93,7 +160,7 @@ function ensureAtLeastOneWinner(drawNumbers) {
   const chosenTicket = tickets[randomTicketIndex];
   const drawSet = new Set();
   const chosenNumbers = [...chosenTicket.numbers];
-  const requiredMatches = Math.min(6, 2 + Math.floor(Math.random() * 3));
+  const requiredMatches = 3; // Guarantee at least one ticket wins with 3 matches
   const preserved = randomNumbers(requiredMatches, 0, requiredMatches - 1).map(i => chosenNumbers[i]);
   preserved.forEach(n => drawSet.add(n));
 
@@ -106,7 +173,7 @@ function ensureAtLeastOneWinner(drawNumbers) {
   const forcedWinners = tickets.map((ticket, index) => {
     const result = computeMatches(ticket, forcedDraw);
     return { ticket, index, ...result };
-  }).filter(x => x.matchCount >= 2);
+  }).filter(x => x.matchCount >= 3);
 
   return { drawNumbers: forcedDraw, winners: forcedWinners };
 }
@@ -118,12 +185,14 @@ function runDraw() {
   }
 
   const drawNumbers = randomNumbers(6, 1, 99);
+  const prizePool = tickets.length * (Number(ticketPriceInput.value) || 0);
+  const prizeAmounts = getPrizeDistribution(prizePool);
   const result = ensureAtLeastOneWinner(drawNumbers);
-  showResult(result.drawNumbers, result.winners);
+  showResult(result.drawNumbers, result.winners, prizePool, prizeAmounts);
 }
 
-function addTicket(numbers) {
-  tickets.push({ numbers });
+function addTicket(numbers, name = '') {
+  tickets.push({ numbers, ticketNumber: nextTicketId++, name: name.trim() });
   updateUi();
 }
 
@@ -146,8 +215,9 @@ quickPickBtn.addEventListener('click', () => {
     alert(`You can only buy up to ${maxTicketsInput.value} tickets at once.`);
     return;
   }
+  const name = ticketNameInput.value;
   for (let i = 0; i < quantity; i += 1) {
-    addTicket(randomNumbers(6, 1, 99));
+    addTicket(randomNumbers(6, 1, 99), name);
   }
 });
 
@@ -163,7 +233,7 @@ addCustomTicketBtn.addEventListener('click', () => {
     alert('Enter 6 unique numbers between 1 and 99 for a custom ticket.');
     return;
   }
-  addTicket(normalized);
+  addTicket(normalized, ticketNameInput.value);
 });
 
 ticketList.addEventListener('click', handleRemoveTicket);
@@ -176,9 +246,26 @@ themeSelect.addEventListener('change', () => {
 });
 
 ticketPriceInput.addEventListener('change', updateUi);
+buyQuantityInput.addEventListener('change', updateBuySummary);
 maxTicketsInput.addEventListener('change', () => {
   const value = Number(maxTicketsInput.value) || 1;
   maxTicketsInput.value = Math.max(1, value);
+  updateBuySummary();
+});
+
+tabButtons.forEach((button) => {
+  button.addEventListener('click', () => {
+    const selected = button.dataset.tab;
+    tabButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
+    if (selected === 'settings') {
+      buyTab.classList.add('hidden');
+      settingsTab.classList.remove('hidden');
+    } else {
+      settingsTab.classList.add('hidden');
+      buyTab.classList.remove('hidden');
+    }
+  });
 });
 
 updateUi();
+updateBuySummary();

@@ -1,34 +1,115 @@
 :root {
   --bg: #f5f5f7;
   --surface: #ffffff;
+  --surface-strong: #f8f8fb;
   --text: #111111;
   --muted: #555555;
   --primary: #3d5afe;
   --secondary: #1e88e5;
   --accent: #ffb300;
   --border: #d7d7de;
+  --input-bg: rgba(255, 255, 255, 0.92);
+  --card-bg: rgba(255, 255, 255, 0.92);
+  --result-bg: rgba(255, 255, 255, 0.92);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: var(--primary);
+  --body-grad: radial-gradient(circle at top, rgba(61, 90, 254, 0.12), transparent 32%), var(--bg);
 }
 
 body.theme-dark {
   --bg: #12131a;
   --surface: #1d2130;
+  --surface-strong: #1e2437;
   --text: #f0f2ff;
   --muted: #b8c0ff;
   --primary: #7c4dff;
   --secondary: #5c6bc0;
   --accent: #ffab40;
   --border: #373f55;
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --result-bg: rgba(255, 255, 255, 0.06);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: rgba(124, 77, 255, 0.75);
+  --body-grad: radial-gradient(circle at top, rgba(124, 77, 255, 0.12), transparent 32%), var(--bg);
 }
 
 body.theme-retro {
   --bg: #1a1b19;
   --surface: #2d2e22;
+  --surface-strong: #38392f;
   --text: #f1f0d1;
   --muted: #b7b489;
   --primary: #f25f5c;
   --secondary: #ffe066;
   --accent: #247ba0;
   --border: #4b4c3f;
+  --input-bg: rgba(255, 255, 255, 0.06);
+  --card-bg: rgba(255, 255, 255, 0.06);
+  --result-bg: rgba(255, 255, 255, 0.08);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: rgba(242, 95, 92, 0.75);
+  --body-grad: radial-gradient(circle at top, rgba(242, 95, 92, 0.14), transparent 32%), var(--bg);
+}
+
+body.theme-ocean {
+  --bg: #051923;
+  --surface: #0f3f5a;
+  --surface-strong: #113853;
+  --text: #e6f7ff;
+  --muted: #98cbd5;
+  --primary: #19b2ff;
+  --secondary: #4bd3ff;
+  --accent: #ffc857;
+  --border: #195063;
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --result-bg: rgba(255, 255, 255, 0.08);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: rgba(25, 178, 255, 0.8);
+  --body-grad: radial-gradient(circle at top, rgba(25, 178, 255, 0.16), transparent 32%), var(--bg);
+}
+
+body.theme-solar {
+  --bg: #211e12;
+  --surface: #362b16;
+  --surface-strong: #42331f;
+  --text: #fff6d8;
+  --muted: #e1c68b;
+  --primary: #ff8f00;
+  --secondary: #ffb703;
+  --accent: #d62828;
+  --border: #6d572b;
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --result-bg: rgba(255, 255, 255, 0.08);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: rgba(255, 143, 0, 0.75);
+  --body-grad: radial-gradient(circle at top, rgba(255, 143, 0, 0.18), transparent 32%), var(--bg);
+}
+
+body.theme-forest {
+  --bg: #132613;
+  --surface: #243d25;
+  --surface-strong: #2b4d2f;
+  --text: #e7f4e4;
+  --muted: #a4c89f;
+  --primary: #7fb069;
+  --secondary: #4f772d;
+  --accent: #f2d388;
+  --border: #3a5a3f;
+  --input-bg: rgba(255, 255, 255, 0.08);
+  --card-bg: rgba(255, 255, 255, 0.08);
+  --result-bg: rgba(255, 255, 255, 0.08);
+  --button-secondary-bg: transparent;
+  --button-secondary-color: var(--primary);
+  --button-secondary-border: rgba(127, 176, 105, 0.75);
+  --body-grad: radial-gradient(circle at top, rgba(127, 176, 105, 0.16), transparent 32%), var(--bg);
 }
 
 * {
@@ -39,7 +120,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: Inter, system-ui, sans-serif;
-  background: radial-gradient(circle at top, rgba(61, 90, 254, 0.12), transparent 32%), var(--bg);
+  background: var(--body-grad);
   color: var(--text);
 }
 
@@ -72,6 +153,69 @@ header p {
   margin-top: 0;
 }
 
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.tab-button {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.tab-button:hover {
+  transform: translateY(-1px);
+}
+
+.tab-button.active {
+  background: var(--primary);
+  color: white;
+  border-color: transparent;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.buy-summary-row {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 18px;
+}
+
+.buy-summary-row > div {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.buy-summary-row label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.buy-summary-row strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.buy-summary-row #nextTicketNumber,
+.buy-summary-row #currentTotalPrice {
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
 .setting-row,
 .field-row,
 .purchase-actions {
@@ -93,19 +237,8 @@ header p {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--input-bg);
   color: var(--text);
-}
-
-body.theme-dark .setting-row input,
-body.theme-dark .field-row input,
-body.theme-dark .setting-row select,
-body.theme-dark .custom-grid input,
-body.theme-retro .setting-row input,
-body.theme-retro .field-row input,
-body.theme-retro .setting-row select,
-body.theme-retro .custom-grid input {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .purchase-actions {
@@ -132,9 +265,9 @@ button.primary {
 }
 
 button.secondary {
-  background: transparent;
-  border: 1px solid var(--primary);
-  color: var(--primary);
+  background: var(--button-secondary-bg);
+  border: 1px solid var(--button-secondary-border);
+  color: var(--button-secondary-color);
 }
 
 .help-text {
@@ -157,7 +290,7 @@ button.secondary {
 .ticket-card {
   padding: 14px 16px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--card-bg);
   border: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
@@ -176,7 +309,7 @@ button.secondary {
 }
 
 .result-block {
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--result-bg);
   border-radius: 14px;
   padding: 16px;
   border: 1px solid var(--border);
@@ -191,12 +324,5 @@ button.secondary {
 .result-item {
   padding: 12px 14px;
   border-radius: 12px;
-  background: rgba(245, 245, 250, 0.88);
-}
-
-body.theme-dark .ticket-card,
-body.theme-dark .result-block,
-body.theme-retro .ticket-card,
-body.theme-retro .result-block {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--surface-strong);
 }
