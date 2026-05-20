@@ -34,11 +34,26 @@ const confirmClearInput = document.getElementById('confirmClearInput');
 const confirmClearBtn = document.getElementById('confirmClearBtn');
 const cancelClearBtn = document.getElementById('cancelClearBtn');
 
+const earnedPoolText = document.getElementById('earnedPool');
+const extraPoolText = document.getElementById('extraPool');
+const totalPoolText = document.getElementById('totalPool');
+const extraPoolInput = document.getElementById('extraPoolInput');
+const setExtraPoolBtn = document.getElementById('setExtraPoolBtn');
+
 let tickets = [];
 let previousDrawings = [];
 let currentTheme = 'light';
 let customMode = false;
 let nextTicketId = 1;
+
+let extraPoolAmount = 0;
+
+try {
+  const stored = Number(localStorage.getItem('extraPoolAmount'));
+  extraPoolAmount = Number.isFinite(stored) && stored >= 0 ? stored : 0;
+} catch (e) {
+  extraPoolAmount = 0;
+}
 
 
 function randomNumbers(count, min, max) {
@@ -61,6 +76,16 @@ function updateBuySummary() {
   const price = Number(ticketPriceInput.value) || 0;
   nextTicketNumberText.textContent = nextTicketId;
   currentTotalPriceText.textContent = `$${(quantity * price).toFixed(2)}`;
+}
+
+function updatePoolDisplay() {
+  const earnedFromSales = tickets.length * (Number(ticketPriceInput.value) || 0);
+  const extraAdded = extraPoolAmount || 0;
+  const totalPool = earnedFromSales + extraAdded;
+
+  earnedPoolText.textContent = `$${earnedFromSales.toFixed(2)}`;
+  extraPoolText.textContent = `$${extraAdded.toFixed(2)}`;
+  totalPoolText.textContent = `$${totalPool.toFixed(2)}`;
 }
 
 function updateUi() {
@@ -314,8 +339,10 @@ function runDraw() {
   }
 
   const drawNumbers = randomNumbers(6, 1, 99);
-  const prizePool = tickets.length * (Number(ticketPriceInput.value) || 0);
+  const earnedFromSales = tickets.length * (Number(ticketPriceInput.value) || 0);
+  const prizePool = earnedFromSales + (extraPoolAmount || 0);
   const prizeAmounts = getPrizeDistribution(prizePool);
+
   const result = ensureAtLeastOneWinner(drawNumbers);
   const winnersWithPrize = showResult(result.drawNumbers, result.winners, prizePool, prizeAmounts) || [];
   recordPreviousDrawing(result.drawNumbers, winnersWithPrize, prizePool);
@@ -411,8 +438,16 @@ themeSelect.addEventListener('change', () => {
   document.body.className = `theme-${currentTheme}`;
 });
 
-ticketPriceInput.addEventListener('change', updateUi);
-buyQuantityInput.addEventListener('change', updateBuySummary);
+ticketPriceInput.addEventListener('change', () => {
+  updateUi();
+  updateBuySummary();
+  updatePoolDisplay();
+});
+buyQuantityInput.addEventListener('change', () => {
+  updateBuySummary();
+  updateUi();
+  updatePoolDisplay();
+});
 maxTicketsInput.addEventListener('change', () => {
   const value = Number(maxTicketsInput.value) || 1;
   maxTicketsInput.value = Math.max(1, value);
@@ -423,6 +458,21 @@ clearDataBtn.addEventListener('click', () => {
   clearConfirmRow.classList.remove('hidden');
   confirmClearInput.value = '';
   confirmClearInput.focus();
+});
+
+setExtraPoolBtn.addEventListener('click', () => {
+  const value = Number(extraPoolInput.value);
+  if (!Number.isFinite(value) || value < 0) {
+    alert('Extra pool must be a non-negative number.');
+    return;
+  }
+  extraPoolAmount = value;
+  try {
+    localStorage.setItem('extraPoolAmount', String(extraPoolAmount));
+  } catch (e) {
+    // ignore
+  }
+  updatePoolDisplay();
 });
 
 cancelClearBtn.addEventListener('click', () => {
@@ -439,6 +489,13 @@ confirmClearBtn.addEventListener('click', () => {
   tickets = [];
   previousDrawings = [];
   nextTicketId = 1;
+  extraPoolAmount = 0;
+  try {
+    localStorage.setItem('extraPoolAmount', '0');
+  } catch (e) {
+    // ignore
+  }
+  if (extraPoolInput) extraPoolInput.value = '0';
   updateUi();
   updateSalesLog({
     name: logNameSearchInput.value,
@@ -500,5 +557,8 @@ tabButtons.forEach((button) => {
 
 updateUi();
 updateBuySummary();
+updatePoolDisplay();
 updatePreviousDrawingsUI();
+
+if (extraPoolInput) extraPoolInput.value = String(extraPoolAmount.toFixed(2));
 

@@ -367,6 +367,36 @@ button.secondary {
   background: var(--surface-strong);
 }
 
+/* Prize Pool (top display) */
+.pool-display {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.pool-card {
+  background: var(--surface-strong);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.pool-card-total {
+  border-color: rgba(61, 90, 254, 0.35);
+}
+
+.pool-label {
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.pool-value {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 800;
+  font-size: 1.25rem;
+}
+
 /* Previous Drawings */
 .previous-drawings-list {
   display: grid;

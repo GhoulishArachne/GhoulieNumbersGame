@@ -13,6 +13,24 @@ cch<!DOCTYPE html>
       <p>Choose 6 numbers from 1-99, buy tickets, then draw and win.</p>
     </header>
 
+    <section class="panel pool-panel" id="poolPanel">
+      <h2>Prize Pool</h2>
+      <div class="pool-display">
+        <div class="pool-card">
+          <div class="pool-label">Earned from ticket sales</div>
+          <div class="pool-value" id="earnedPool">$0.00</div>
+        </div>
+        <div class="pool-card">
+          <div class="pool-label">Added to total pool</div>
+          <div class="pool-value" id="extraPool">$0.00</div>
+        </div>
+        <div class="pool-card pool-card-total">
+          <div class="pool-label">Total pool</div>
+          <div class="pool-value" id="totalPool">$0.00</div>
+        </div>
+      </div>
+    </section>
+
     <div class="tab-bar">
       <button type="button" class="tab-button active" data-tab="buy">Buy Tickets</button>
       <button type="button" class="tab-button" data-tab="settings">Settings</button>
@@ -104,6 +122,13 @@ cch<!DOCTYPE html>
           <option value="forest">Forest</option>
         </select>
       </div>
+
+      <div class="setting-row">
+        <label for="extraPoolInput">Add to total prize pool ($)</label>
+        <input id="extraPoolInput" type="number" min="0" step="0.01" value="0" />
+        <button id="setExtraPoolBtn" type="button" class="secondary">Update Added Amount</button>
+      </div>
+
       <div class="setting-row clear-data-row">
         <button id="clearDataBtn" class="secondary">Clear All Test Data</button>
       </div>
