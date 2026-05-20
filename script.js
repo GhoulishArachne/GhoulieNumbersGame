@@ -366,7 +366,10 @@ function addTicket(numbers, buyerName, stateId, sellerName) {
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
   });
+  // Keep prize pool "earned from ticket sales" in sync with ticket sales.
+  updatePoolDisplay();
 }
+
 
 function handleRemoveTicket(event) {
   if (!event.target.dataset.index) return;
@@ -378,7 +381,10 @@ function handleRemoveTicket(event) {
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
   });
+  // Keep prize pool "earned from ticket sales" in sync with ticket sales.
+  updatePoolDisplay();
 }
+
 
 function parseCustomInputs() {
   const inputs = Array.from(customInputs.querySelectorAll('input'));
