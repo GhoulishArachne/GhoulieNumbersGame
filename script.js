@@ -169,7 +169,9 @@ function updatePreviousDrawingsUI() {
         ? draw.winners.map((w) => `
             <div class="result-item">
               <div><strong>Winner ticket #${w.ticketNumber}:</strong> ${formatMoney(w.prizeAmount)}</div>
+              <div class="help-text" style="margin:6px 0 0;">Buyer: ${w.buyerName} • State ID: ${w.stateId}</div>
               <div class="help-text" style="margin:6px 0 0;">Numbers: ${w.numbers.join(', ')} • Matches: ${w.matchCount}</div>
+
             </div>
           `).join('')
         : `<p class="help-text">No winning ticket (3+ matches).</p>`;
@@ -253,6 +255,7 @@ function recordPreviousDrawing(drawNumbers, winnersWithPrize, prizePool) {
     winners: (winnersWithPrize || []).map((w) => ({
       ticketNumber: w.ticket.ticketNumber,
       buyerName: w.ticket.buyerName,
+      stateId: w.ticket.stateId,
       numbers: w.ticket.numbers.slice(),
       matchCount: w.matchCount,
       matches: w.matches.slice(),
