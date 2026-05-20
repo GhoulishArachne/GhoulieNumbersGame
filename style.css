@@ -1,3 +1,5 @@
+/* Existing styles kept, new styles appended for Previous Drawings tab */
+
 :root {
   --bg: #f5f5f7;
   --surface: #ffffff;
@@ -364,3 +366,32 @@ button.secondary {
   border-radius: 12px;
   background: var(--surface-strong);
 }
+
+/* Previous Drawings */
+.previous-drawings-list {
+  display: grid;
+  gap: 12px;
+}
+
+.previous-drawing-block {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.previous-drawing-header {
+  margin-bottom: 6px;
+}
+
+.previous-drawing-subheader {
+  color: var(--muted);
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.previous-drawing-winners {
+  display: grid;
+  gap: 10px;
+}
+

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+cch<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -17,6 +17,8 @@
       <button type="button" class="tab-button active" data-tab="buy">Buy Tickets</button>
       <button type="button" class="tab-button" data-tab="settings">Settings</button>
       <button type="button" class="tab-button" data-tab="log">Sales Log</button>
+      <button type="button" class="tab-button" data-tab="previous">Previous Drawings</button>
+
     </div>
 
     <section class="panel purchase-panel" id="buyTab">
@@ -29,6 +31,10 @@
         <div>
           <label for="buyerName">Buyer name</label>
           <input id="buyerName" type="text" placeholder="Required buyer name" />
+        </div>
+        <div>
+          <label for="stateId">State ID</label>
+          <input id="stateId" type="text" placeholder="Required State ID" />
         </div>
         <div>
           <label for="sellerName">Sold by</label>
@@ -57,6 +63,24 @@
         <input type="number" min="1" max="99" placeholder="#6" />
       </div>
       <button id="addCustomTicketBtn" class="secondary" style="display:none;">Add Custom Ticket</button>
+      <section class="panel tickets-panel">
+        <h2>Your Tickets</h2>
+        <div id="ticketList" class="ticket-list"></div>
+        <div class="summary-row">
+          <span id="ticketCount">0 tickets</span>
+          <span id="totalCost">$0</span>
+        </div>
+        <button id="drawBtn" class="primary">Draw Numbers</button>
+      </section>
+
+      <section class="panel result-panel">
+        <h2>Drawing Result</h2>
+        <div class="result-block">
+          <p><strong>Drawn numbers:</strong> <span id="drawnNumbers">—</span></p>
+          <p><strong>Winning tickets:</strong> <span id="winnerCount">0</span></p>
+          <div id="resultDetails"></div>
+        </div>
+      </section>
     </section>
 
     <section class="panel settings-panel hidden" id="settingsTab">
@@ -112,25 +136,13 @@
       <div id="salesLogList" class="sales-log-list"></div>
     </section>
 
-    <section class="panel tickets-panel">
-      <h2>Your Tickets</h2>
-      <div id="ticketList" class="ticket-list"></div>
-      <div class="summary-row">
-        <span id="ticketCount">0 tickets</span>
-        <span id="totalCost">$0</span>
-      </div>
-      <button id="drawBtn" class="primary">Draw Numbers</button>
+    <section class="panel previous-drawings-panel hidden" id="previousTab">
+      <h2>Previous Drawings</h2>
+      <div id="previousDrawingsList" class="previous-drawings-list"></div>
     </section>
 
-    <section class="panel result-panel">
-      <h2>Drawing Result</h2>
-      <div class="result-block">
-        <p><strong>Drawn numbers:</strong> <span id="drawnNumbers">—</span></p>
-        <p><strong>Winning tickets:</strong> <span id="winnerCount">0</span></p>
-        <div id="resultDetails"></div>
-      </div>
-    </section>
   </main>
   <script src="script.js"></script>
 </body>
 </html>
+
