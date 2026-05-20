@@ -302,6 +302,7 @@ function ensureAtLeastOneWinner(drawNumbers) {
     return { ticket, index, ...result };
   }).filter(x => x.matchCount >= 3);
 
+  // If the random draw already produced winners (3+), keep it.
   if (winners.length > 0) {
     return { drawNumbers, winners };
   }
@@ -310,17 +311,38 @@ function ensureAtLeastOneWinner(drawNumbers) {
     return { drawNumbers, winners: [] };
   }
 
+  // Weighted category selection for the *winning* ticket.
+  // 4 matches: 40% | 5 matches: 25% | 6 matches: 5% | otherwise: 3 matches (30%)
+  const r = Math.random();
+  let targetMatchCount = 3;
+  if (r < 0.40) targetMatchCount = 4;
+  else if (r < 0.65) targetMatchCount = 5;
+  else if (r < 0.70) targetMatchCount = 6;
+
+  // Force a draw that yields at least one winning ticket with the selected exact match count.
   const randomTicketIndex = Math.floor(Math.random() * tickets.length);
   const chosenTicket = tickets[randomTicketIndex];
-  const drawSet = new Set();
   const chosenNumbers = [...chosenTicket.numbers];
-  const requiredMatches = 3; // Guarantee at least one ticket wins with 3 matches
-  const preserved = randomNumbers(requiredMatches, 0, requiredMatches - 1).map(i => chosenNumbers[i]);
+
+  const drawSet = new Set();
+
+  // Preserve exactly targetMatchCount numbers from chosen ticket.
+  // (This guarantees that chosenTicket has at least targetMatchCount matches.)
+  const preservedIndices = new Set();
+  while (preservedIndices.size < targetMatchCount) {
+    preservedIndices.add(Math.floor(Math.random() * 6));
+  }
+  const preserved = Array.from(preservedIndices).map(i => chosenNumbers[i]);
   preserved.forEach(n => drawSet.add(n));
 
+  // Fill remaining numbers (6 - targetMatchCount) from outside the chosen ticket.
+  // This ensures chosenTicket has exactly targetMatchCount matches.
+  const chosenSet = new Set(chosenNumbers);
   while (drawSet.size < 6) {
     const value = Math.floor(Math.random() * 99) + 1;
-    if (!drawSet.has(value)) drawSet.add(value);
+    if (drawSet.has(value)) continue;
+    if (chosenSet.has(value)) continue;
+    drawSet.add(value);
   }
 
   const forcedDraw = Array.from(drawSet).sort((a, b) => a - b);
@@ -331,6 +353,7 @@ function ensureAtLeastOneWinner(drawNumbers) {
 
   return { drawNumbers: forcedDraw, winners: forcedWinners };
 }
+
 
 function runDraw() {
   if (tickets.length === 0) {
