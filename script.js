@@ -2,7 +2,8 @@ const ticketPriceInput = document.getElementById('ticketPrice');
 const maxTicketsInput = document.getElementById('maxTickets');
 const themeSelect = document.getElementById('themeSelect');
 const buyQuantityInput = document.getElementById('buyQuantity');
-const ticketNameInput = document.getElementById('ticketName');
+const buyerNameInput = document.getElementById('buyerName');
+const sellerNameInput = document.getElementById('sellerName');
 const nextTicketNumberText = document.getElementById('nextTicketNumber');
 const currentTotalPriceText = document.getElementById('currentTotalPrice');
 const quickPickBtn = document.getElementById('quickPickBtn');
@@ -19,6 +20,16 @@ const resultDetails = document.getElementById('resultDetails');
 const tabButtons = document.querySelectorAll('.tab-button');
 const buyTab = document.getElementById('buyTab');
 const settingsTab = document.getElementById('settingsTab');
+const logTab = document.getElementById('logTab');
+const logNameSearchInput = document.getElementById('logNameSearch');
+const logDateSearchInput = document.getElementById('logDateSearch');
+const logTimeSearchInput = document.getElementById('logTimeSearch');
+const salesLogList = document.getElementById('salesLogList');
+const clearDataBtn = document.getElementById('clearDataBtn');
+const clearConfirmRow = document.getElementById('clearConfirmRow');
+const confirmClearInput = document.getElementById('confirmClearInput');
+const confirmClearBtn = document.getElementById('confirmClearBtn');
+const cancelClearBtn = document.getElementById('cancelClearBtn');
 
 let tickets = [];
 let currentTheme = 'light';
@@ -54,8 +65,10 @@ function updateUi() {
     card.className = 'ticket-card';
     card.innerHTML = `
       <div>
-        <strong>Ticket #${ticket.ticketNumber}${ticket.name ? ` — ${ticket.name}` : ''}</strong>
+        <strong>Ticket #${ticket.ticketNumber}</strong>
         <div>${ticket.numbers.join(', ')}</div>
+        <div class="ticket-meta">Buyer: ${ticket.buyerName} • Sold by: ${ticket.sellerName}</div>
+        <div class="ticket-meta">Date: ${ticket.saleDate} • Time: ${ticket.saleTime} EST</div>
       </div>
       <button data-index="${index}" class="secondary">Remove</button>
     `;
@@ -83,6 +96,42 @@ function getPrizeDistribution(pool) {
     4: pool * 0.1,
     3: pool * 0.05,
   };
+}
+
+function getEasternDateTime() {
+  const now = new Date();
+  const utcMillis = now.getTime() + now.getTimezoneOffset() * 60000;
+  const estMillis = utcMillis - 5 * 60 * 60000;
+  const estDate = new Date(estMillis);
+  const date = estDate.toISOString().slice(0, 10);
+  const time = estDate.toTimeString().slice(0, 8);
+  return { saleDate: date, saleTime: time };
+}
+
+function updateSalesLog(filter = {}) {
+  const filterName = (filter.name || '').trim().toLowerCase();
+  const filterDate = (filter.date || '').trim();
+  const filterTime = (filter.time || '').trim();
+
+  const rows = tickets.filter((ticket) => {
+    const matchesName = filterName === '' || ticket.buyerName.toLowerCase().includes(filterName);
+    const matchesDate = filterDate === '' || ticket.saleDate.includes(filterDate);
+    const matchesTime = filterTime === '' || ticket.saleTime.includes(filterTime);
+    return matchesName && matchesDate && matchesTime;
+  });
+
+  salesLogList.innerHTML = rows.length === 0
+    ? '<p class="help-text">No sales match the current filters.</p>'
+    : rows.map((ticket) => `
+      <div class="sales-log-item">
+        <strong>Ticket #${ticket.ticketNumber}</strong>
+        <div>Buyer: ${ticket.buyerName}</div>
+        <div>Sold by: ${ticket.sellerName}</div>
+        <div>Date: ${ticket.saleDate}</div>
+        <div>Time: ${ticket.saleTime} EST</div>
+        <div>Numbers: ${ticket.numbers.join(', ')}</div>
+      </div>
+    `).join('');
 }
 
 function showResult(drawNumbers, winners, prizePool, prizeAmounts) {
@@ -191,9 +240,22 @@ function runDraw() {
   showResult(result.drawNumbers, result.winners, prizePool, prizeAmounts);
 }
 
-function addTicket(numbers, name = '') {
-  tickets.push({ numbers, ticketNumber: nextTicketId++, name: name.trim() });
+function addTicket(numbers, buyerName, sellerName) {
+  const { saleDate, saleTime } = getEasternDateTime();
+  tickets.push({
+    numbers,
+    ticketNumber: nextTicketId++,
+    buyerName: buyerName.trim(),
+    sellerName: sellerName.trim(),
+    saleDate,
+    saleTime,
+  });
   updateUi();
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
 }
 
 function handleRemoveTicket(event) {
@@ -201,6 +263,11 @@ function handleRemoveTicket(event) {
   const index = Number(event.target.dataset.index);
   tickets.splice(index, 1);
   updateUi();
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
 }
 
 function parseCustomInputs() {
@@ -215,9 +282,15 @@ quickPickBtn.addEventListener('click', () => {
     alert(`You can only buy up to ${maxTicketsInput.value} tickets at once.`);
     return;
   }
-  const name = ticketNameInput.value;
+  const buyerName = buyerNameInput.value.trim();
+  const sellerName = sellerNameInput.value.trim();
+  if (!buyerName || !sellerName) {
+    alert('Please enter both a buyer name and who sold the ticket.');
+    return;
+  }
+
   for (let i = 0; i < quantity; i += 1) {
-    addTicket(randomNumbers(6, 1, 99), name);
+    addTicket(randomNumbers(6, 1, 99), buyerName, sellerName);
   }
 });
 
@@ -233,7 +306,13 @@ addCustomTicketBtn.addEventListener('click', () => {
     alert('Enter 6 unique numbers between 1 and 99 for a custom ticket.');
     return;
   }
-  addTicket(normalized, ticketNameInput.value);
+  const buyerName = buyerNameInput.value.trim();
+  const sellerName = sellerNameInput.value.trim();
+  if (!buyerName || !sellerName) {
+    alert('Please enter both a buyer name and who sold the ticket.');
+    return;
+  }
+  addTicket(normalized, buyerName, sellerName);
 });
 
 ticketList.addEventListener('click', handleRemoveTicket);
@@ -253,16 +332,72 @@ maxTicketsInput.addEventListener('change', () => {
   updateBuySummary();
 });
 
+clearDataBtn.addEventListener('click', () => {
+  clearConfirmRow.classList.remove('hidden');
+  confirmClearInput.value = '';
+  confirmClearInput.focus();
+});
+
+cancelClearBtn.addEventListener('click', () => {
+  clearConfirmRow.classList.add('hidden');
+  confirmClearInput.value = '';
+});
+
+confirmClearBtn.addEventListener('click', () => {
+  if (confirmClearInput.value.trim().toUpperCase() !== 'CLEAR') {
+    alert('Type CLEAR to confirm clearing data.');
+    return;
+  }
+
+  tickets = [];
+  nextTicketId = 1;
+  updateUi();
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
+  clearConfirmRow.classList.add('hidden');
+  confirmClearInput.value = '';
+});
+
+logNameSearchInput.addEventListener('input', () => {
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
+});
+
+logDateSearchInput.addEventListener('input', () => {
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
+});
+
+logTimeSearchInput.addEventListener('input', () => {
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+  });
+});
+
 tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
     const selected = button.dataset.tab;
     tabButtons.forEach((btn) => btn.classList.toggle('active', btn === button));
-    if (selected === 'settings') {
-      buyTab.classList.add('hidden');
-      settingsTab.classList.remove('hidden');
-    } else {
-      settingsTab.classList.add('hidden');
-      buyTab.classList.remove('hidden');
+    buyTab.classList.toggle('hidden', selected !== 'buy');
+    settingsTab.classList.toggle('hidden', selected !== 'settings');
+    logTab.classList.toggle('hidden', selected !== 'log');
+    if (selected === 'log') {
+      updateSalesLog({
+        name: logNameSearchInput.value,
+        date: logDateSearchInput.value,
+        time: logTimeSearchInput.value,
+      });
     }
   });
 });

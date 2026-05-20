@@ -216,12 +216,50 @@ header p {
   color: var(--text);
 }
 
+.search-row {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: 18px;
+}
+
+.sales-log-list {
+  display: grid;
+  gap: 12px;
+}
+
+.sales-log-item {
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+}
+
+.sales-log-item strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
 .setting-row,
 .field-row,
 .purchase-actions {
   display: grid;
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.clear-confirm-row {
+  gap: 8px;
+}
+
+.confirm-row-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.confirm-row-actions input {
+  flex: 1;
 }
 
 .setting-row label,

@@ -3,19 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ghoulie Lotto</title>
+  <title>Jackie's Numbers Game</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="theme-light">
   <main class="app-shell">
     <header>
-      <h1>Ghoulie Lotto</h1>
+      <h1>Jackie's Numbers Game</h1>
       <p>Choose 6 numbers from 1-99, buy tickets, then draw and win.</p>
     </header>
 
     <div class="tab-bar">
       <button type="button" class="tab-button active" data-tab="buy">Buy Tickets</button>
       <button type="button" class="tab-button" data-tab="settings">Settings</button>
+      <button type="button" class="tab-button" data-tab="log">Sales Log</button>
     </div>
 
     <section class="panel purchase-panel" id="buyTab">
@@ -26,8 +27,12 @@
           <div id="nextTicketNumber">1</div>
         </div>
         <div>
-          <label for="ticketName">Ticket name</label>
-          <input id="ticketName" type="text" placeholder="Optional name" />
+          <label for="buyerName">Buyer name</label>
+          <input id="buyerName" type="text" placeholder="Required buyer name" />
+        </div>
+        <div>
+          <label for="sellerName">Sold by</label>
+          <input id="sellerName" type="text" placeholder="Staff member" />
         </div>
         <div>
           <strong>Total ticket price</strong>
@@ -75,6 +80,36 @@
           <option value="forest">Forest</option>
         </select>
       </div>
+      <div class="setting-row clear-data-row">
+        <button id="clearDataBtn" class="secondary">Clear All Test Data</button>
+      </div>
+      <div class="setting-row clear-confirm-row hidden" id="clearConfirmRow">
+        <label for="confirmClearInput">Type CLEAR to confirm</label>
+        <div class="confirm-row-actions">
+          <input id="confirmClearInput" type="text" placeholder="CLEAR" />
+          <button id="confirmClearBtn" class="secondary">Confirm</button>
+          <button id="cancelClearBtn" class="secondary">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel sales-log-panel hidden" id="logTab">
+      <h2>Sales Log</h2>
+      <div class="search-row">
+        <div>
+          <label for="logNameSearch">Search buyer</label>
+          <input id="logNameSearch" type="text" placeholder="Search by buyer name" />
+        </div>
+        <div>
+          <label for="logDateSearch">Search date</label>
+          <input id="logDateSearch" type="text" placeholder="YYYY-MM-DD" />
+        </div>
+        <div>
+          <label for="logTimeSearch">Search time</label>
+          <input id="logTimeSearch" type="text" placeholder="HH:MM:SS" />
+        </div>
+      </div>
+      <div id="salesLogList" class="sales-log-list"></div>
     </section>
 
     <section class="panel tickets-panel">
