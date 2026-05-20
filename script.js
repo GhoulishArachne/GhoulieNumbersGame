@@ -26,7 +26,9 @@ const previousTab = document.getElementById('previousTab');
 const logNameSearchInput = document.getElementById('logNameSearch');
 const logDateSearchInput = document.getElementById('logDateSearch');
 const logTimeSearchInput = document.getElementById('logTimeSearch');
+const logPickSearchInput = document.getElementById('logPickSearch');
 const salesLogList = document.getElementById('salesLogList');
+
 const previousDrawingsList = document.getElementById('previousDrawingsList');
 const clearDataBtn = document.getElementById('clearDataBtn');
 const clearConfirmRow = document.getElementById('clearConfirmRow');
@@ -138,17 +140,36 @@ function getEasternDateTime() {
   return { saleDate: date, saleTime: time };
 }
 
+function parsePickNumbersInput(raw) {
+  const cleaned = (raw || '').trim();
+  if (cleaned === '') return [];
+
+  // Accept comma, whitespace, or both as separators.
+  const tokens = cleaned.split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
+  const nums = tokens
+    .map(t => Number(t))
+    .filter(n => Number.isInteger(n) && n >= 1 && n <= 99);
+
+  // De-dupe to avoid requiring duplicates from user input.
+  return Array.from(new Set(nums));
+}
+
 function updateSalesLog(filter = {}) {
   const filterName = (filter.name || '').trim().toLowerCase();
   const filterDate = (filter.date || '').trim();
   const filterTime = (filter.time || '').trim();
+  const picks = Array.isArray(filter.picks) ? filter.picks : [];
 
   const rows = tickets.filter((ticket) => {
     const matchesName = filterName === '' || ticket.buyerName.toLowerCase().includes(filterName);
     const matchesDate = filterDate === '' || ticket.saleDate.includes(filterDate);
     const matchesTime = filterTime === '' || ticket.saleTime.includes(filterTime);
-    return matchesName && matchesDate && matchesTime;
+
+    const matchesPicks = picks.length === 0 || picks.every(p => ticket.numbers.includes(p));
+
+    return matchesName && matchesDate && matchesTime && matchesPicks;
   });
+
 
   salesLogList.innerHTML = rows.length === 0
     ? '<p class="help-text">No sales match the current filters.</p>'
@@ -388,7 +409,9 @@ function addTicket(numbers, buyerName, stateId, sellerName) {
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
+
   // Keep prize pool "earned from ticket sales" in sync with ticket sales.
   updatePoolDisplay();
 }
@@ -403,10 +426,12 @@ function handleRemoveTicket(event) {
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
   // Keep prize pool "earned from ticket sales" in sync with ticket sales.
   updatePoolDisplay();
 }
+
 
 
 function parseCustomInputs() {
@@ -415,7 +440,19 @@ function parseCustomInputs() {
   return normalizeTicket(values);
 }
 
+if (logPickSearchInput) {
+  logPickSearchInput.addEventListener('input', () => {
+    updateSalesLog({
+      name: logNameSearchInput.value,
+      date: logDateSearchInput.value,
+      time: logTimeSearchInput.value,
+      picks: parsePickNumbersInput(logPickSearchInput.value),
+    });
+  });
+}
+
 quickPickBtn.addEventListener('click', () => {
+
   const quantity = Math.max(1, Math.min(Number(buyQuantityInput.value) || 1, Number(maxTicketsInput.value) || 1));
   if (quantity > Number(maxTicketsInput.value)) {
     alert(`You can only buy up to ${maxTicketsInput.value} tickets at once.`);
@@ -530,7 +567,9 @@ confirmClearBtn.addEventListener('click', () => {
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
+
   updatePreviousDrawingsUI();
   clearConfirmRow.classList.add('hidden');
   confirmClearInput.value = '';
@@ -542,24 +581,30 @@ logNameSearchInput.addEventListener('input', () => {
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
 });
+
 
 logDateSearchInput.addEventListener('input', () => {
   updateSalesLog({
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
 });
+
 
 logTimeSearchInput.addEventListener('input', () => {
   updateSalesLog({
     name: logNameSearchInput.value,
     date: logDateSearchInput.value,
     time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
 });
+
 
 tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -570,13 +615,15 @@ tabButtons.forEach((button) => {
     logTab.classList.toggle('hidden', selected !== 'log');
     previousTab.classList.toggle('hidden', selected !== 'previous');
 
-    if (selected === 'log') {
+  if (selected === 'log') {
       updateSalesLog({
         name: logNameSearchInput.value,
         date: logDateSearchInput.value,
         time: logTimeSearchInput.value,
+        picks: parsePickNumbersInput(logPickSearchInput?.value),
       });
     }
+
 
     if (selected === 'previous') {
       updatePreviousDrawingsUI();
