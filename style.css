@@ -310,6 +310,23 @@ button.secondary {
   color: var(--button-secondary-color);
 }
 
+.sync-data-button {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 20;
+  background: var(--accent);
+  color: #111111;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+}
+
+.sync-data-button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
 .help-text {
   margin: 0 0 12px;
   color: var(--muted);

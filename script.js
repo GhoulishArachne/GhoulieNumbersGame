@@ -28,81 +28,128 @@ const logDateSearchInput = document.getElementById('logDateSearch');
 const logTimeSearchInput = document.getElementById('logTimeSearch');
 const logPickSearchInput = document.getElementById('logPickSearch');
 const salesLogList = document.getElementById('salesLogList');
-
 const previousDrawingsList = document.getElementById('previousDrawingsList');
 const clearDataBtn = document.getElementById('clearDataBtn');
 const clearConfirmRow = document.getElementById('clearConfirmRow');
 const confirmClearInput = document.getElementById('confirmClearInput');
 const confirmClearBtn = document.getElementById('confirmClearBtn');
 const cancelClearBtn = document.getElementById('cancelClearBtn');
-
 const earnedPoolText = document.getElementById('earnedPool');
 const extraPoolText = document.getElementById('extraPool');
 const totalPoolText = document.getElementById('totalPool');
 const extraPoolInput = document.getElementById('extraPoolInput');
 const setExtraPoolBtn = document.getElementById('setExtraPoolBtn');
+const syncDataBtn = document.getElementById('syncDataBtn');
 
 let tickets = [];
 let previousDrawings = [];
-let currentTheme = 'light';
 let customMode = false;
 let nextTicketId = 1;
-
 let extraPoolAmount = 0;
+let ticketPrice = Number(ticketPriceInput.value) || 500;
+let maxTickets = Number(maxTicketsInput.value) || 10;
+let refreshInFlight = false;
 
-try {
-  const stored = Number(localStorage.getItem('extraPoolAmount'));
-  extraPoolAmount = Number.isFinite(stored) && stored >= 0 ? stored : 0;
-} catch (e) {
-  extraPoolAmount = 0;
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
 }
 
-
-function randomNumbers(count, min, max) {
-  const numbers = new Set();
-  while (numbers.size < count) {
-    const value = Math.floor(Math.random() * (max - min + 1)) + min;
-    numbers.add(value);
-  }
-  return Array.from(numbers).sort((a, b) => a - b);
+function formatMoney(value) {
+  return `$${(Number(value) || 0).toFixed(2)}`;
 }
 
 function normalizeTicket(numbers) {
-  const uniqueNumbers = [...new Set(numbers.map(Number))].filter(n => Number.isInteger(n) && n >= 1 && n <= 99);
+  const uniqueNumbers = [...new Set(numbers.map(Number))].filter((n) => Number.isInteger(n) && n >= 1 && n <= 99);
   if (uniqueNumbers.length !== 6) return null;
   return uniqueNumbers.sort((a, b) => a - b);
 }
 
+function parsePickNumbersInput(raw) {
+  const cleaned = (raw || '').trim();
+  if (cleaned === '') return [];
+  return Array.from(new Set(
+    cleaned
+      .split(/[,\s]+/)
+      .map((t) => Number(t.trim()))
+      .filter((n) => Number.isInteger(n) && n >= 1 && n <= 99)
+  ));
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+    ...options,
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+  return payload;
+}
+
+function applyState(state) {
+  tickets = Array.isArray(state.tickets) ? state.tickets : [];
+  previousDrawings = Array.isArray(state.previousDrawings) ? state.previousDrawings : [];
+  nextTicketId = Number(state.nextTicketId) || 1;
+  extraPoolAmount = Number(state.extraPoolAmount) || 0;
+  ticketPrice = Number(state.ticketPrice) || 0;
+  maxTickets = Math.max(1, Number(state.maxTickets) || 1);
+
+  ticketPriceInput.value = String(ticketPrice);
+  maxTicketsInput.value = String(maxTickets);
+  extraPoolInput.value = String(extraPoolAmount.toFixed(2));
+
+  updateUi();
+  updateSalesLogFromInputs();
+  updatePreviousDrawingsUI();
+  updatePoolDisplay();
+}
+
+async function refreshState() {
+  if (refreshInFlight) return;
+  refreshInFlight = true;
+  try {
+    const state = await apiRequest('/api/state');
+    applyState(state);
+  } catch (error) {
+    console.error(error);
+  } finally {
+    refreshInFlight = false;
+  }
+}
+
 function updateBuySummary() {
   const quantity = Math.max(1, Number(buyQuantityInput.value) || 1);
-  const price = Number(ticketPriceInput.value) || 0;
   nextTicketNumberText.textContent = nextTicketId;
-  currentTotalPriceText.textContent = `$${(quantity * price).toFixed(2)}`;
+  currentTotalPriceText.textContent = formatMoney(quantity * ticketPrice);
 }
 
 function updatePoolDisplay() {
-  const earnedFromSales = tickets.length * (Number(ticketPriceInput.value) || 0);
-  const extraAdded = extraPoolAmount || 0;
-  const totalPool = earnedFromSales + extraAdded;
-
-  earnedPoolText.textContent = `$${earnedFromSales.toFixed(2)}`;
-  extraPoolText.textContent = `$${extraAdded.toFixed(2)}`;
-  totalPoolText.textContent = `$${totalPool.toFixed(2)}`;
+  const earnedFromSales = tickets.length * ticketPrice;
+  const totalPool = earnedFromSales + extraPoolAmount;
+  earnedPoolText.textContent = formatMoney(earnedFromSales);
+  extraPoolText.textContent = formatMoney(extraPoolAmount);
+  totalPoolText.textContent = formatMoney(totalPool);
 }
 
 function updateUi() {
   ticketList.innerHTML = '';
-  tickets.forEach((ticket, index) => {
+  tickets.forEach((ticket) => {
     const card = document.createElement('div');
     card.className = 'ticket-card';
     card.innerHTML = `
       <div>
-        <strong>Ticket #${ticket.ticketNumber}</strong>
-        <div>${ticket.numbers.join(', ')}</div>
-        <div class="ticket-meta">Buyer: ${ticket.buyerName} • State ID: ${ticket.stateId}</div>
-        <div class="ticket-meta">Sold by: ${ticket.sellerName} • Date: ${ticket.saleDate} • Time: ${ticket.saleTime} EST</div>
+        <strong>Ticket #${escapeHtml(ticket.ticketNumber)}</strong>
+        <div>${escapeHtml(ticket.numbers.join(', '))}</div>
+        <div class="ticket-meta">Buyer: ${escapeHtml(ticket.buyerName)} &bull; State ID: ${escapeHtml(ticket.stateId)}</div>
+        <div class="ticket-meta">Sold by: ${escapeHtml(ticket.sellerName)} &bull; Date: ${escapeHtml(ticket.saleDate)} &bull; Time: ${escapeHtml(ticket.saleTime)} EST</div>
       </div>
-      <button data-index="${index}" class="secondary">Remove</button>
+      <button data-id="${escapeHtml(ticket.id)}" class="secondary">Remove</button>
     `;
     ticketList.appendChild(card);
   });
@@ -111,47 +158,9 @@ function updateUi() {
     ticketList.innerHTML = '<p class="help-text">No tickets yet. Use quick pick or custom numbers to add tickets.</p>';
   }
 
-  const price = Number(ticketPriceInput.value) || 0;
   ticketCountText.textContent = `${tickets.length} ticket${tickets.length === 1 ? '' : 's'}`;
-  totalCostText.textContent = `$${(tickets.length * price).toFixed(2)}`;
+  totalCostText.textContent = formatMoney(tickets.length * ticketPrice);
   updateBuySummary();
-}
-
-function formatMoney(value) {
-  return `$${value.toFixed(2)}`;
-}
-
-function getPrizeDistribution(pool) {
-  return {
-    6: pool * 0.7,
-    5: pool * 0.15,
-    4: pool * 0.1,
-    3: pool * 0.05,
-  };
-}
-
-function getEasternDateTime() {
-  const now = new Date();
-  const utcMillis = now.getTime() + now.getTimezoneOffset() * 60000;
-  const estMillis = utcMillis - 5 * 60 * 60000;
-  const estDate = new Date(estMillis);
-  const date = estDate.toISOString().slice(0, 10);
-  const time = estDate.toTimeString().slice(0, 8);
-  return { saleDate: date, saleTime: time };
-}
-
-function parsePickNumbersInput(raw) {
-  const cleaned = (raw || '').trim();
-  if (cleaned === '') return [];
-
-  // Accept comma, whitespace, or both as separators.
-  const tokens = cleaned.split(/[,\s]+/).map(t => t.trim()).filter(Boolean);
-  const nums = tokens
-    .map(t => Number(t))
-    .filter(n => Number.isInteger(n) && n >= 1 && n <= 99);
-
-  // De-dupe to avoid requiring duplicates from user input.
-  return Array.from(new Set(nums));
 }
 
 function updateSalesLog(filter = {}) {
@@ -161,43 +170,34 @@ function updateSalesLog(filter = {}) {
   const picks = Array.isArray(filter.picks) ? filter.picks : [];
 
   const rows = tickets.filter((ticket) => {
-    const matchesName = filterName === '' || ticket.buyerName.toLowerCase().includes(filterName);
-    const matchesDate = filterDate === '' || ticket.saleDate.includes(filterDate);
-    const matchesTime = filterTime === '' || ticket.saleTime.includes(filterTime);
-
-    const matchesPicks = picks.length === 0 || picks.every(p => ticket.numbers.includes(p));
-
+    const matchesName = filterName === '' || String(ticket.buyerName).toLowerCase().includes(filterName);
+    const matchesDate = filterDate === '' || String(ticket.saleDate).includes(filterDate);
+    const matchesTime = filterTime === '' || String(ticket.saleTime).includes(filterTime);
+    const matchesPicks = picks.length === 0 || picks.every((p) => ticket.numbers.includes(p));
     return matchesName && matchesDate && matchesTime && matchesPicks;
   });
-
 
   salesLogList.innerHTML = rows.length === 0
     ? '<p class="help-text">No sales match the current filters.</p>'
     : rows.map((ticket) => `
       <div class="sales-log-item">
-        <strong>Ticket #${ticket.ticketNumber}</strong>
-        <div>Buyer: ${ticket.buyerName}</div>
-        <div>State ID: ${ticket.stateId}</div>
-        <div>Sold by: ${ticket.sellerName}</div>
-        <div>Date: ${ticket.saleDate}</div>
-        <div>Time: ${ticket.saleTime} EST</div>
-        <div>Numbers: ${ticket.numbers.join(', ')}</div>
+        <strong>Ticket #${escapeHtml(ticket.ticketNumber)}</strong>
+        <div>Buyer: ${escapeHtml(ticket.buyerName)}</div>
+        <div>State ID: ${escapeHtml(ticket.stateId)}</div>
+        <div>Sold by: ${escapeHtml(ticket.sellerName)}</div>
+        <div>Date: ${escapeHtml(ticket.saleDate)}</div>
+        <div>Time: ${escapeHtml(ticket.saleTime)} EST</div>
+        <div>Numbers: ${escapeHtml(ticket.numbers.join(', '))}</div>
       </div>
     `).join('');
 }
 
-function computeWinnerPrizeBreakdown(winners, prizeAmounts) {
-  const winnersByMatch = winners.reduce((acc, win) => {
-    acc[win.matchCount] = acc[win.matchCount] || [];
-    acc[win.matchCount].push(win);
-    return acc;
-  }, {});
-
-  return winners.map((win) => {
-    const totalForCategory = prizeAmounts[win.matchCount] || 0;
-    const group = winnersByMatch[win.matchCount] || [];
-    const share = group.length ? totalForCategory / group.length : 0;
-    return { ...win, prizeAmount: share };
+function updateSalesLogFromInputs() {
+  updateSalesLog({
+    name: logNameSearchInput.value,
+    date: logDateSearchInput.value,
+    time: logTimeSearchInput.value,
+    picks: parsePickNumbersInput(logPickSearchInput?.value),
   });
 }
 
@@ -208,26 +208,24 @@ function updatePreviousDrawingsUI() {
   }
 
   previousDrawingsList.innerHTML = previousDrawings
-    .slice()
-    .reverse()
     .map((draw) => {
-      const winnersHtml = draw.winners.length
-        ? draw.winners.map((w) => `
+      const winners = Array.isArray(draw.winners) ? draw.winners : [];
+      const winnersHtml = winners.length
+        ? winners.map((w) => `
             <div class="result-item">
-              <div><strong>Winner ticket #${w.ticketNumber}:</strong> ${formatMoney(w.prizeAmount)}</div>
-              <div class="help-text" style="margin:6px 0 0;">Buyer: ${w.buyerName} • State ID: ${w.stateId}</div>
-              <div class="help-text" style="margin:6px 0 0;">Numbers: ${w.numbers.join(', ')} • Matches: ${w.matchCount}</div>
-
+              <div><strong>Winner ticket #${escapeHtml(w.ticketNumber)}:</strong> ${formatMoney(w.prizeAmount)}</div>
+              <div class="help-text" style="margin:6px 0 0;">Buyer: ${escapeHtml(w.buyerName)} &bull; State ID: ${escapeHtml(w.stateId)}</div>
+              <div class="help-text" style="margin:6px 0 0;">Numbers: ${escapeHtml(w.numbers.join(', '))} &bull; Matches: ${escapeHtml(w.matchCount)}</div>
             </div>
           `).join('')
-        : `<p class="help-text">No winning ticket (3+ matches).</p>`;
+        : '<p class="help-text">No winning ticket (3+ matches).</p>';
 
       return `
         <div class="previous-drawing-block">
           <div class="previous-drawing-header">
-            <strong>Draw: ${draw.drawDate} ${draw.drawTime} EST</strong>
+            <strong>Draw: ${escapeHtml(draw.drawDate)} ${escapeHtml(draw.drawTime)} EST</strong>
           </div>
-          <div class="previous-drawing-subheader">Winning tickets: ${draw.winners.length}</div>
+          <div class="previous-drawing-subheader">Winning tickets: ${winners.length}</div>
           <div class="previous-drawing-winners">
             ${winnersHtml}
           </div>
@@ -243,42 +241,24 @@ function showResult(drawNumbers, winners, prizePool, prizeAmounts) {
 
   const distributionHtml = Object.entries(prizeAmounts).map(([count, amount]) => `
     <div class="result-item">
-      <strong>${count} match${count > 1 ? 'es' : ''}:</strong> ${formatMoney(amount)} total
+      <strong>${escapeHtml(count)} match${Number(count) > 1 ? 'es' : ''}:</strong> ${formatMoney(amount)} total
     </div>
   `).join('');
 
-  if (winners.length === 0) {
-    resultDetails.innerHTML = `
-      <div class="result-item">
-        <strong>Prize pool:</strong> ${formatMoney(prizePool)}
-      </div>
-      ${distributionHtml}
-      <p class="help-text">No ticket matched 3 or more numbers.</p>
-    `;
-
-    return;
-  }
-
-  const winnersWithPrize = computeWinnerPrizeBreakdown(winners, prizeAmounts);
-
-  const winnersByMatch = winnersWithPrize.reduce((acc, win) => {
-    acc[win.matchCount] = acc[win.matchCount] || [];
-    acc[win.matchCount].push(win);
-    return acc;
-  }, {});
-
-  const winnersHtml = Object.entries(winnersByMatch)
-    .sort((a, b) => Number(b[0]) - Number(a[0]))
-    .map(([matchCount, group]) => {
-      return group.map(win => `
+  const winnersHtml = winners.length === 0
+    ? '<p class="help-text">No ticket matched 3 or more numbers.</p>'
+    : winners
+      .slice()
+      .sort((a, b) => b.matchCount - a.matchCount)
+      .map((win) => `
         <div class="result-item">
-          <strong>Ticket ${win.index + 1}${win.ticket.name ? ` — ${win.ticket.name}` : ''}:</strong>
-          <div>Numbers: ${win.ticket.numbers.join(', ')}</div>
-          <div>Matches: ${win.matchCount} (${win.matches.join(', ')})</div>
-          <div>Prize: ${win.prizeAmount > 0 ? formatMoney(win.prizeAmount) : 'No prize'}</div>
+          <strong>Ticket #${escapeHtml(win.ticket.ticketNumber)}:</strong>
+          <div>Buyer: ${escapeHtml(win.ticket.buyerName)}</div>
+          <div>Numbers: ${escapeHtml(win.ticket.numbers.join(', '))}</div>
+          <div>Matches: ${escapeHtml(win.matchCount)} (${escapeHtml(win.matches.join(', '))})</div>
+          <div>Prize: ${formatMoney(win.prizeAmount)}</div>
         </div>
       `).join('');
-    }).join('');
 
   resultDetails.innerHTML = `
     <div class="result-item">
@@ -287,178 +267,14 @@ function showResult(drawNumbers, winners, prizePool, prizeAmounts) {
     ${distributionHtml}
     ${winnersHtml}
   `;
-
-  return winnersWithPrize;
 }
-
-function recordPreviousDrawing(drawNumbers, winnersWithPrize, prizePool) {
-  const { saleDate, saleTime } = getEasternDateTime();
-  previousDrawings.push({
-    drawDate: saleDate,
-    drawTime: saleTime,
-    prizePool,
-    drawnNumbers: drawNumbers.slice(),
-    winners: (winnersWithPrize || []).map((w) => ({
-      ticketNumber: w.ticket.ticketNumber,
-      buyerName: w.ticket.buyerName,
-      stateId: w.ticket.stateId,
-      numbers: w.ticket.numbers.slice(),
-      matchCount: w.matchCount,
-      matches: w.matches.slice(),
-      prizeAmount: w.prizeAmount,
-    })),
-  });
-  updatePreviousDrawingsUI();
-}
-
-
-function computeMatches(ticket, drawNumbers) {
-  const matches = ticket.numbers.filter(value => drawNumbers.includes(value));
-  return { matches, matchCount: matches.length };
-}
-
-function ensureAtLeastOneWinner(drawNumbers) {
-  const winners = tickets.map((ticket, index) => {
-    const result = computeMatches(ticket, drawNumbers);
-    return { ticket, index, ...result };
-  }).filter(x => x.matchCount >= 3);
-
-  // If the random draw already produced winners (3+), keep it.
-  if (winners.length > 0) {
-    return { drawNumbers, winners };
-  }
-
-  if (tickets.length === 0) {
-    return { drawNumbers, winners: [] };
-  }
-
-  // Weighted category selection for the *winning* ticket.
-  // 4 matches: 40% | 5 matches: 25% | 6 matches: 5% | otherwise: 3 matches (30%)
-  const r = Math.random();
-  let targetMatchCount = 3;
-  if (r < 0.40) targetMatchCount = 4;
-  else if (r < 0.65) targetMatchCount = 5;
-  else if (r < 0.70) targetMatchCount = 6;
-
-  // Force a draw that yields at least one winning ticket with the selected exact match count.
-  const randomTicketIndex = Math.floor(Math.random() * tickets.length);
-  const chosenTicket = tickets[randomTicketIndex];
-  const chosenNumbers = [...chosenTicket.numbers];
-
-  const drawSet = new Set();
-
-  // Preserve exactly targetMatchCount numbers from chosen ticket.
-  // (This guarantees that chosenTicket has at least targetMatchCount matches.)
-  const preservedIndices = new Set();
-  while (preservedIndices.size < targetMatchCount) {
-    preservedIndices.add(Math.floor(Math.random() * 6));
-  }
-  const preserved = Array.from(preservedIndices).map(i => chosenNumbers[i]);
-  preserved.forEach(n => drawSet.add(n));
-
-  // Fill remaining numbers (6 - targetMatchCount) from outside the chosen ticket.
-  // This ensures chosenTicket has exactly targetMatchCount matches.
-  const chosenSet = new Set(chosenNumbers);
-  while (drawSet.size < 6) {
-    const value = Math.floor(Math.random() * 99) + 1;
-    if (drawSet.has(value)) continue;
-    if (chosenSet.has(value)) continue;
-    drawSet.add(value);
-  }
-
-  const forcedDraw = Array.from(drawSet).sort((a, b) => a - b);
-  const forcedWinners = tickets.map((ticket, index) => {
-    const result = computeMatches(ticket, forcedDraw);
-    return { ticket, index, ...result };
-  }).filter(x => x.matchCount >= 3);
-
-  return { drawNumbers: forcedDraw, winners: forcedWinners };
-}
-
-
-function runDraw() {
-  if (tickets.length === 0) {
-    alert('Buy at least one ticket before drawing.');
-    return;
-  }
-
-  const drawNumbers = randomNumbers(6, 1, 99);
-  const earnedFromSales = tickets.length * (Number(ticketPriceInput.value) || 0);
-  const prizePool = earnedFromSales + (extraPoolAmount || 0);
-  const prizeAmounts = getPrizeDistribution(prizePool);
-
-  const result = ensureAtLeastOneWinner(drawNumbers);
-  const winnersWithPrize = showResult(result.drawNumbers, result.winners, prizePool, prizeAmounts) || [];
-  recordPreviousDrawing(result.drawNumbers, winnersWithPrize, prizePool);
-}
-
-
-function addTicket(numbers, buyerName, stateId, sellerName) {
-  const { saleDate, saleTime } = getEasternDateTime();
-  tickets.push({
-    numbers,
-    ticketNumber: nextTicketId++,
-    buyerName: buyerName.trim(),
-    stateId: stateId.trim(),
-    sellerName: sellerName.trim(),
-    saleDate,
-    saleTime,
-  });
-  updateUi();
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
-
-  // Keep prize pool "earned from ticket sales" in sync with ticket sales.
-  updatePoolDisplay();
-}
-
-
-function handleRemoveTicket(event) {
-  if (!event.target.dataset.index) return;
-  const index = Number(event.target.dataset.index);
-  tickets.splice(index, 1);
-  updateUi();
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
-  // Keep prize pool "earned from ticket sales" in sync with ticket sales.
-  updatePoolDisplay();
-}
-
-
 
 function parseCustomInputs() {
   const inputs = Array.from(customInputs.querySelectorAll('input'));
-  const values = inputs.map(input => Number(input.value));
-  return normalizeTicket(values);
+  return normalizeTicket(inputs.map((input) => Number(input.value)));
 }
 
-if (logPickSearchInput) {
-  logPickSearchInput.addEventListener('input', () => {
-    updateSalesLog({
-      name: logNameSearchInput.value,
-      date: logDateSearchInput.value,
-      time: logTimeSearchInput.value,
-      picks: parsePickNumbersInput(logPickSearchInput.value),
-    });
-  });
-}
-
-quickPickBtn.addEventListener('click', () => {
-
-  const quantity = Math.max(1, Math.min(Number(buyQuantityInput.value) || 1, Number(maxTicketsInput.value) || 1));
-  if (quantity > Number(maxTicketsInput.value)) {
-    alert(`You can only buy up to ${maxTicketsInput.value} tickets at once.`);
-    return;
-  }
-
+async function addTickets(quantity, customNumbers = null) {
   const buyerName = buyerNameInput.value.trim();
   const stateId = stateIdInput.value.trim();
   const sellerName = sellerNameInput.value.trim();
@@ -468,9 +284,26 @@ quickPickBtn.addEventListener('click', () => {
     return;
   }
 
-  for (let i = 0; i < quantity; i += 1) {
-    addTicket(randomNumbers(6, 1, 99), buyerName, stateId, sellerName);
+  try {
+    const payload = { quantity, buyerName, stateId, sellerName };
+    if (customNumbers) payload.customNumbers = customNumbers;
+    const response = await apiRequest('/api/addTickets', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    applyState(response.state);
+  } catch (error) {
+    alert(error.message);
   }
+}
+
+quickPickBtn.addEventListener('click', () => {
+  const quantity = Math.max(1, Math.min(Number(buyQuantityInput.value) || 1, maxTickets));
+  if (quantity > maxTickets) {
+    alert(`You can only buy up to ${maxTickets} tickets at once.`);
+    return;
+  }
+  addTickets(quantity);
 });
 
 customPickBtn.addEventListener('click', () => {
@@ -485,39 +318,84 @@ addCustomTicketBtn.addEventListener('click', () => {
     alert('Enter 6 unique numbers between 1 and 99 for a custom ticket.');
     return;
   }
-  const buyerName = buyerNameInput.value.trim();
-  const stateId = stateIdInput.value.trim();
-  const sellerName = sellerNameInput.value.trim();
-  if (!buyerName || !stateId || !sellerName) {
-    alert('Please enter a buyer name, State ID, and who sold the ticket.');
+  addTickets(1, normalized);
+});
+
+ticketList.addEventListener('click', async (event) => {
+  const id = event.target.dataset.id;
+  if (!id) return;
+  try {
+    const response = await apiRequest('/api/removeTicket', {
+      method: 'POST',
+      body: JSON.stringify({ ticketDbId: id }),
+    });
+    applyState(response.state);
+  } catch (error) {
+    alert(error.message);
+  }
+});
+
+drawBtn.addEventListener('click', async () => {
+  if (tickets.length === 0) {
+    alert('Buy at least one ticket before drawing.');
     return;
   }
-  addTicket(normalized, buyerName, stateId, sellerName);
+
+  try {
+    const response = await apiRequest('/api/runDraw', {
+      method: 'POST',
+      body: JSON.stringify({ ticketPrice }),
+    });
+    showResult(response.drawNumbers, response.winners, response.prizePool, response.prizeAmounts);
+    applyState(response.state);
+  } catch (error) {
+    alert(error.message);
+  }
 });
-
-ticketList.addEventListener('click', handleRemoveTicket);
-
-drawBtn.addEventListener('click', runDraw);
 
 themeSelect.addEventListener('change', () => {
-  currentTheme = themeSelect.value;
-  document.body.className = `theme-${currentTheme}`;
+  document.body.className = `theme-${themeSelect.value}`;
 });
 
-ticketPriceInput.addEventListener('change', () => {
-  updateUi();
-  updateBuySummary();
-  updatePoolDisplay();
-});
-buyQuantityInput.addEventListener('change', () => {
-  updateBuySummary();
-  updateUi();
-  updatePoolDisplay();
-});
-maxTicketsInput.addEventListener('change', () => {
-  const value = Number(maxTicketsInput.value) || 1;
-  maxTicketsInput.value = Math.max(1, value);
-  updateBuySummary();
+async function saveSettings() {
+  const newTicketPrice = Number(ticketPriceInput.value);
+  const newMaxTickets = Number(maxTicketsInput.value);
+  if (!Number.isFinite(newTicketPrice) || newTicketPrice < 0 || !Number.isInteger(newMaxTickets) || newMaxTickets < 1) {
+    alert('Ticket price must be non-negative and max tickets must be at least 1.');
+    return;
+  }
+
+  try {
+    const response = await apiRequest('/api/updateSettings', {
+      method: 'POST',
+      body: JSON.stringify({ ticketPrice: newTicketPrice, maxTickets: newMaxTickets }),
+    });
+    applyState(response.state);
+  } catch (error) {
+    alert(error.message);
+  }
+}
+
+ticketPriceInput.addEventListener('change', saveSettings);
+maxTicketsInput.addEventListener('change', saveSettings);
+buyQuantityInput.addEventListener('change', updateBuySummary);
+
+setExtraPoolBtn.addEventListener('click', async () => {
+  const value = Number(extraPoolInput.value);
+  if (!Number.isFinite(value) || value < 0) {
+    alert('Extra pool must be a non-negative number.');
+    return;
+  }
+
+  try {
+    const response = await apiRequest('/api/updateExtraPool', {
+      method: 'POST',
+      body: JSON.stringify({ extraPoolAmount: value }),
+    });
+    applyState(response.state);
+  } catch (error) {
+    alert(error.message);
+  }
 });
 
 clearDataBtn.addEventListener('click', () => {
@@ -526,85 +404,53 @@ clearDataBtn.addEventListener('click', () => {
   confirmClearInput.focus();
 });
 
-setExtraPoolBtn.addEventListener('click', () => {
-  const value = Number(extraPoolInput.value);
-  if (!Number.isFinite(value) || value < 0) {
-    alert('Extra pool must be a non-negative number.');
-    return;
-  }
-  extraPoolAmount = value;
-  try {
-    localStorage.setItem('extraPoolAmount', String(extraPoolAmount));
-  } catch (e) {
-    // ignore
-  }
-  updatePoolDisplay();
-});
-
 cancelClearBtn.addEventListener('click', () => {
   clearConfirmRow.classList.add('hidden');
   confirmClearInput.value = '';
 });
 
-confirmClearBtn.addEventListener('click', () => {
+confirmClearBtn.addEventListener('click', async () => {
   if (confirmClearInput.value.trim().toUpperCase() !== 'CLEAR') {
     alert('Type CLEAR to confirm clearing data.');
     return;
   }
 
-  tickets = [];
-  previousDrawings = [];
-  nextTicketId = 1;
-  extraPoolAmount = 0;
   try {
-    localStorage.setItem('extraPoolAmount', '0');
-  } catch (e) {
-    // ignore
+    const response = await apiRequest('/api/clearAll', { method: 'POST', body: '{}' });
+    applyState(response.state);
+    clearConfirmRow.classList.add('hidden');
+    confirmClearInput.value = '';
+    drawnNumbersText.textContent = '-';
+    winnerCountText.textContent = '0';
+    resultDetails.innerHTML = '';
+  } catch (error) {
+    alert(error.message);
   }
-  if (extraPoolInput) extraPoolInput.value = '0';
-  updateUi();
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
-
-  updatePreviousDrawingsUI();
-  clearConfirmRow.classList.add('hidden');
-  confirmClearInput.value = '';
 });
 
+logNameSearchInput.addEventListener('input', updateSalesLogFromInputs);
+logDateSearchInput.addEventListener('input', updateSalesLogFromInputs);
+logTimeSearchInput.addEventListener('input', updateSalesLogFromInputs);
+if (logPickSearchInput) logPickSearchInput.addEventListener('input', updateSalesLogFromInputs);
 
-logNameSearchInput.addEventListener('input', () => {
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
+syncDataBtn.addEventListener('click', async () => {
+  const shouldSync = window.confirm('This will replace the shared game data with the data in data.json. Continue?');
+  if (!shouldSync) return;
+
+  syncDataBtn.disabled = true;
+  syncDataBtn.textContent = 'Syncing...';
+
+  try {
+    const response = await apiRequest('/api/migrateDataJson', { method: 'POST', body: '{}' });
+    applyState(response.state);
+    alert(`Synced ${response.migrated.tickets} tickets and ${response.migrated.previousDrawings} previous drawings.`);
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    syncDataBtn.disabled = false;
+    syncDataBtn.textContent = 'Click Me to Sync';
+  }
 });
-
-
-logDateSearchInput.addEventListener('input', () => {
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
-});
-
-
-logTimeSearchInput.addEventListener('input', () => {
-  updateSalesLog({
-    name: logNameSearchInput.value,
-    date: logDateSearchInput.value,
-    time: logTimeSearchInput.value,
-    picks: parsePickNumbersInput(logPickSearchInput?.value),
-  });
-});
-
 
 tabButtons.forEach((button) => {
   button.addEventListener('click', () => {
@@ -615,26 +461,11 @@ tabButtons.forEach((button) => {
     logTab.classList.toggle('hidden', selected !== 'log');
     previousTab.classList.toggle('hidden', selected !== 'previous');
 
-  if (selected === 'log') {
-      updateSalesLog({
-        name: logNameSearchInput.value,
-        date: logDateSearchInput.value,
-        time: logTimeSearchInput.value,
-        picks: parsePickNumbersInput(logPickSearchInput?.value),
-      });
-    }
-
-
-    if (selected === 'previous') {
-      updatePreviousDrawingsUI();
-    }
+    if (selected === 'log') updateSalesLogFromInputs();
+    if (selected === 'previous') updatePreviousDrawingsUI();
   });
 });
 
-updateUi();
-updateBuySummary();
-updatePoolDisplay();
-updatePreviousDrawingsUI();
-
-if (extraPoolInput) extraPoolInput.value = String(extraPoolAmount.toFixed(2));
-
+refreshState();
+setInterval(refreshState, 3000);
+window.addEventListener('focus', refreshState);

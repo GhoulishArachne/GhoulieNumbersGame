@@ -1,0 +1,17 @@
+{
+  "name": "ghoulie-numbers-game",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "migrate:data": "node scripts/migrate-data-to-redis.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "lowdb": "^6.1.1",
+    "nanoid": "^5.1.11"
+  }
+}
