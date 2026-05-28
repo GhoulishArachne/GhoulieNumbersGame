@@ -152,6 +152,10 @@ function createStore() {
 
 const store = createStore();
 
+function hasEnvValue(name) {
+  return typeof process.env[name] === 'string' && process.env[name].trim() !== '';
+}
+
 function normalizeTicket(numbers) {
   const uniqueNumbers = [...new Set((numbers || []).map(Number))].filter(
     (n) => Number.isInteger(n) && n >= 1 && n <= 99
@@ -303,6 +307,19 @@ app.get('/api/state', async (req, res, next) => {
   } catch (error) {
     next(error);
   }
+});
+
+app.get('/api/debugEnv', (req, res) => {
+  res.json({
+    vercel: hasEnvValue('VERCEL'),
+    nodeEnv: process.env.NODE_ENV || null,
+    targetEnv: process.env.VERCEL_TARGET_ENV || null,
+    hasKvRestUrl: hasEnvValue('KV_REST_API_URL'),
+    hasKvRestToken: hasEnvValue('KV_REST_API_TOKEN'),
+    hasUpstashRestUrl: hasEnvValue('UPSTASH_REDIS_REST_URL'),
+    hasUpstashRestToken: hasEnvValue('UPSTASH_REDIS_REST_TOKEN'),
+    storeType: store.constructor.name,
+  });
 });
 
 app.post('/api/addTickets', async (req, res, next) => {

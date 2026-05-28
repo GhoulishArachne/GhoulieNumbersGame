@@ -9,6 +9,7 @@
     "migrate:data": "node scripts/migrate-data-to-redis.js"
   },
   "dependencies": {
+    "@upstash/redis": "^1.38.0",
     "cors": "^2.8.6",
     "express": "^4.22.2",
     "lowdb": "^6.1.1",
